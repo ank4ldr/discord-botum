@@ -104,12 +104,17 @@ client.on('messageCreate', async message => {
             }
             return message.channel.send({ embeds: [rankEmbed] });
         } catch (error) {
-            if (error.response && error.response.status === 404) {
-                const unrankedEmbed = new EmbedBuilder().setColor(rankInfo['UNRANKED'].color).setThumbnail(rankInfo['UNRANKED'].image).setTitle(`${gameName}#${tagLine} Dereceli Profili`).setDescription('Bu oyuncunun Dereceli Tekli/Çiftli liginde bir kaydı bulunamadı. (Unranked)');
-                return message.channel.send({ embeds: [unrankedEmbed] });
+            console.error("DETAYLI RANK HATASI:", error);
+            let debugMessage = "Beklenmedik bir hata oluştu.";
+            if (error.response) {
+                debugMessage = `API'dan bir hata yanıtı alındı!\n\n**Status Kodu:** ${error.response.status}\n**Hata Mesajı:** \`\`\`json\n${JSON.stringify(error.response.data, null, 2)}\`\`\``;
+            } else if (error.request) {
+                debugMessage = "API'a istek gönderildi ama sunucudan yanıt alınamadı. Riot sunucularında bir sorun olabilir.";
+            } else {
+                debugMessage = `İstek hazırlanırken bir hata oluştu: ${error.message}`;
             }
-            console.error("API Hatası:", error.response ? error.response.data : error.message);
-            return message.channel.send(`Bir hata oluştu. API anahtarı güncel mi veya oyuncu adı doğru mu?`);
+            const errorEmbed = new EmbedBuilder().setColor('#FF0000').setTitle('Hata Tespit Edildi!').setDescription('`!rank` komutu çalıştırılırken bir sorunla karşılaşıldı.').addFields({ name: 'Teknik Rapor', value: debugMessage.substring(0, 1024) });
+            return message.channel.send({ embeds: [errorEmbed] });
         }
     }
 });
