@@ -2,9 +2,12 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const axios = require('axios');
 
-// Anahtarları ortam değişkenlerinden alıyoruz.
+// --- NÜKLEER TEST ---
+// Anahtarları ortam değişkenlerinden almak yerine, direkt koda yazıyoruz.
+// BU SADECE BİR TEST İÇİNDİR, BU SORUNU ÇÖZDÜKTEN SONRA ESKİ HALİNE DÖNECEĞİZ!
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const RIOT_API_KEY = process.env.RIOT_API_KEY;
+const RIOT_API_KEY = "RGAPI-514e2edb-d716-4d2a-8858-fe3ffd33cfec"; // Riot anahtarını direkt buraya yapıştır.
+// --------------------
 
 // Kelime listemiz
 const wordList = [
@@ -43,10 +46,12 @@ client.on('messageCreate', async message => {
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
+    // ----- !selam KOMUTU -----
     if (command === 'selam') {
         return message.channel.send('Aleyküm Selam Kanka! Ben çalışıyorum! 🚀');
     }
 
+    // ----- !kelime KOMUTU -----
     if (command === 'kelime') {
         const randomIndex = Math.floor(Math.random() * wordList.length);
         const randomWord = wordList[randomIndex];
@@ -54,6 +59,26 @@ client.on('messageCreate', async message => {
         return message.channel.send({ embeds: [wordEmbed] });
     }
 
+    // ----- !lol KOMUTU (YENİ EKLENDİ) -----
+    if (command === 'lol') {
+        const riotId = args.join(' ');
+        if (!riotId.includes('#')) { return message.channel.send('Lütfen Riot ID\'ni isim ve etiketle birlikte gir. Örnek: `!lol ank4ldr#2758`'); }
+        const [gameName, tagLine] = riotId.split('#');
+        try {
+            const accountApiUrl = `https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURI(gameName)}/${tagLine}?api_key=${RIOT_API_KEY}`;
+            const accountResponse = await axios.get(accountApiUrl);
+            const puuid = accountResponse.data.puuid;
+            const summonerApiUrl = `https://tr1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`;
+            const summonerResponse = await axios.get(summonerApiUrl);
+            const summonerData = summonerResponse.data;
+            return message.channel.send(`**${gameName}#${tagLine}** adlı oyuncu şu anda **${summonerData.summonerLevel}** seviyesinde.`);
+        } catch (error) {
+            console.error("!lol Komutu Hatası:", error.response ? error.response.data : error.message);
+            return message.channel.send(`Oyuncu bulunamadı veya bir API hatası oluştu. Anahtarını kontrol etmeyi unutma!`);
+        }
+    }
+
+    // ----- !maçözeti KOMUTU -----
     if (command === 'maçözeti') {
         const riotId = args.join(' ');
         if (!riotId.includes('#')) { return message.channel.send('Lütfen Riot ID\'ni isim ve etiketle birlikte gir. Örnek: `!maçözeti ank4ldr#2758`'); }
@@ -79,6 +104,7 @@ client.on('messageCreate', async message => {
         }
     }
 
+    // ----- !rank KOMUTU -----
     if (command === 'rank') {
         const riotId = args.join(' ');
         if (!riotId.includes('#')) { return message.channel.send('Lütfen Riot ID\'ni isim ve etiketle birlikte gir. Örnek: `!rank ank4ldr#2758`'); }
@@ -104,17 +130,12 @@ client.on('messageCreate', async message => {
             }
             return message.channel.send({ embeds: [rankEmbed] });
         } catch (error) {
-            console.error("DETAYLI RANK HATASI:", error);
-            let debugMessage = "Beklenmedik bir hata oluştu.";
-            if (error.response) {
-                debugMessage = `API'dan bir hata yanıtı alındı!\n\n**Status Kodu:** ${error.response.status}\n**Hata Mesajı:** \`\`\`json\n${JSON.stringify(error.response.data, null, 2)}\`\`\``;
-            } else if (error.request) {
-                debugMessage = "API'a istek gönderildi ama sunucudan yanıt alınamadı. Riot sunucularında bir sorun olabilir.";
-            } else {
-                debugMessage = `İstek hazırlanırken bir hata oluştu: ${error.message}`;
+            if (error.response && error.response.status === 404) {
+                const unrankedEmbed = new EmbedBuilder().setColor(rankInfo['UNRANKED'].color).setThumbnail(rankInfo['UNRANKED'].image).setTitle(`${gameName}#${tagLine} Dereceli Profili`).setDescription('Bu oyuncunun Dereceli Tekli/Çiftli liginde bir kaydı bulunamadı. (Unranked)');
+                return message.channel.send({ embeds: [unrankedEmbed] });
             }
-            const errorEmbed = new EmbedBuilder().setColor('#FF0000').setTitle('Hata Tespit Edildi!').setDescription('`!rank` komutu çalıştırılırken bir sorunla karşılaşıldı.').addFields({ name: 'Teknik Rapor', value: debugMessage.substring(0, 1024) });
-            return message.channel.send({ embeds: [errorEmbed] });
+            console.error("API Hatası:", error.response ? error.response.data : error.message);
+            return message.channel.send(`Bir hata oluştu. API anahtarı güncel mi veya oyuncu adı doğru mu?`);
         }
     }
 });
